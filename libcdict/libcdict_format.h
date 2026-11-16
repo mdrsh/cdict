@@ -158,7 +158,7 @@ typedef struct
 } prefix_t;
 
 #define PREFIX_LENGTH_OFFSET NODE_KIND_BIT_LENGTH
-#define PREFIX_MAX_LENGTH ((int)(uint8_t)(0xFFu << PREFIX_LENGTH_OFFSET))
+#define PREFIX_MAX_LENGTH ((int)(uint8_t)(0xFFu >> PREFIX_LENGTH_OFFSET))
 
 /** Length of the [prefix] array. */
 #define PREFIX_LENGTH(P) ((P)->header >> PREFIX_LENGTH_OFFSET)

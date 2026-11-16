@@ -154,9 +154,26 @@ JNIEXPORT jstring JNICALL Java_juloo_cdict_Cdict_word_1native
   (JNIEnv *env, jclass _cls, jlong dictl, jint index)
 {
   cdict_t const *dict = (cdict_t const*)dictl;
-  int const max_len = 256;
+  int const max_len = 2048;
   char dst[max_len + 1];
   int len = cdict_word(dict, index, dst, max_len);
+  if (len > 0)
+  {
+    int i = len;
+    while (i > 0 && ((unsigned char)dst[i - 1] & 0xC0) == 0x80)
+      i--;
+    if (i > 0)
+    {
+      unsigned char lead = (unsigned char)dst[i - 1];
+      int expected = 1;
+      if ((lead & 0x80) == 0) expected = 1;
+      else if ((lead & 0xE0) == 0xC0) expected = 2;
+      else if ((lead & 0xF0) == 0xE0) expected = 3;
+      else if ((lead & 0xF8) == 0xF0) expected = 4;
+      if (len - (i - 1) < expected)
+        len = i - 1;
+    }
+  }
   dst[len] = '\0';
   return (*env)->NewStringUTF(env, dst);
 }
