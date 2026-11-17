@@ -132,11 +132,7 @@ end = struct
 
   let of_int_array freq =
     let freq_compressed =
-      (* Compute the 0x10 medians and replace every frequencies by the cluster
-         index they are assigned to. This compresses frequencies to a 4-bits
-         number by loosing information. *)
-      K_medians.k_medians freq 0x10 ~compare:Int.compare ~renumber:(fun _ c ->
-          c)
+      Array.map (fun f -> min 15 (max 0 (f / 16))) freq
     in
     of_int_array_raw freq_compressed
 
