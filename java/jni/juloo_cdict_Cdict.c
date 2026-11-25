@@ -83,25 +83,39 @@ JNIEXPORT void JNICALL Java_juloo_cdict_Cdict_init(JNIEnv *env, jclass jcls)
   Result.original_index = (*env)->GetFieldID(env, Result.class, "original_index", "I");
 }
 
+static jlong throw_construction_error(JNIEnv *env, char const *msg)
+{
+  jclass cls = (*env)->FindClass(env, "juloo/cdict/Cdict$ConstructionError");
+  if (cls != NULL)
+    (*env)->ThrowNew(env, cls, msg);
+  return 0;
+}
+
 JNIEXPORT jlong JNICALL Java_juloo_cdict_Cdict_of_1bytes_1native
   (JNIEnv *env, jclass _cls, jbyteArray data)
 {
+  if (data == NULL)
+    return throw_construction_error(env, "null data");
   int const len = (*env)->GetArrayLength(env, data);
   // Allocate and copy the dictionary data on the C heap.
   header_value *hv = malloc(sizeof(header_value) + len);
+  if (hv == NULL)
+    return throw_construction_error(env, "out of memory");
   void *dict_data = ((void*)hv) + sizeof(header_value);
   (*env)->GetByteArrayRegion(env, data, 0, len, dict_data);
   cdict_cnstr_result_t r = cdict_of_string(dict_data, len, &hv->header);
   if (r != CDICT_OK)
   {
     free(hv);
-    (*env)->ThrowNew(env,
-        (*env)->FindClass(env, "juloo/cdict/Cdict$ConstructionError"),
-        cdict_cnstr_result_to_string(r));
-    return 0;
+    return throw_construction_error(env, cdict_cnstr_result_to_string(r));
   }
   int n_dicts = hv->header.n_dicts;
-  cdict_t *dicts = malloc(sizeof(cdict_t) * n_dicts);
+  cdict_t *dicts = (n_dicts > 0) ? malloc(sizeof(cdict_t) * n_dicts) : NULL;
+  if (n_dicts > 0 && dicts == NULL)
+  {
+    free(hv);
+    return throw_construction_error(env, "out of memory");
+  }
   for (int i = 0; i < n_dicts; i++)
     cdict_get_dict(&hv->header, i, &dicts[i]);
   hv->dicts = dicts;
@@ -112,11 +126,15 @@ JNIEXPORT jobjectArray JNICALL Java_juloo_cdict_Cdict_00024Header_get_1dicts_1na
   (JNIEnv *env, jobject this, jlong header_ptr)
 {
   jclass cdict_cls = (*env)->FindClass(env, "juloo/cdict/Cdict");
+  header_value const *hv = (void*)header_ptr;
+  if (hv == NULL)
+    return (*env)->NewObjectArray(env, 0, cdict_cls, NULL);
   jmethodID cdict_cnstr = (*env)->GetMethodID(env, cdict_cls, "<init>",
       "(Ljava/lang/String;JLjuloo/cdict/Cdict$Header;)V");
-  header_value const *hv = (void*)header_ptr;
   int n_dicts = hv->header.n_dicts;
   jobjectArray jdicts = (*env)->NewObjectArray(env, n_dicts, cdict_cls, NULL);
+  if (jdicts == NULL)
+    return NULL;
   for (int i = 0; i < n_dicts; i++)
   {
     jstring jname = (*env)->NewStringUTF(env, hv->dicts[i].name);
@@ -130,11 +148,16 @@ JNIEXPORT jobjectArray JNICALL Java_juloo_cdict_Cdict_00024Header_get_1dicts_1na
 JNIEXPORT void JNICALL Java_juloo_cdict_Cdict_finalize_1header
   (JNIEnv *env, jclass _cls, jlong header_ptr)
 {
-  free((void*)header_ptr);
+  header_value *hv = (header_value*)header_ptr;
+  if (hv != NULL)
+  {
+    free((void*)hv->dicts);
+    free(hv);
+  }
 }
 
 JNIEXPORT jobject JNICALL Java_juloo_cdict_Cdict_find_1native
-  (JNIEnv *env, jclass _cls, jlong dictl, jstring jword)
+  (JNIEnv *env, jobject _self, jlong dictl, jstring jword)
 {
   cdict_t const *dict = (cdict_t const*)dictl;
   STACK_ALLOCATED_GETSTRINGUTF(cword, jword);
@@ -144,14 +167,14 @@ JNIEXPORT jobject JNICALL Java_juloo_cdict_Cdict_find_1native
 }
 
 JNIEXPORT jint JNICALL Java_juloo_cdict_Cdict_freq_1native
-  (JNIEnv *_env, jclass _cls, jlong dictl, jint index)
+  (JNIEnv *_env, jobject _self, jlong dictl, jint index)
 {
   cdict_t const *dict = (cdict_t const*)dictl;
   return cdict_freq(dict, index);
 }
 
 JNIEXPORT jstring JNICALL Java_juloo_cdict_Cdict_word_1native
-  (JNIEnv *env, jclass _cls, jlong dictl, jint index)
+  (JNIEnv *env, jobject _self, jlong dictl, jint index)
 {
   cdict_t const *dict = (cdict_t const*)dictl;
   int const max_len = 2048;
@@ -179,7 +202,7 @@ JNIEXPORT jstring JNICALL Java_juloo_cdict_Cdict_word_1native
 }
 
 JNIEXPORT jintArray JNICALL Java_juloo_cdict_Cdict_suffixes_1native
-  (JNIEnv *env, jclass _cls, jlong dictl, jobject jresult, jint count)
+  (JNIEnv *env, jobject _self, jlong dictl, jobject jresult, jint count)
 {
   cdict_t const *dict = (cdict_t const*)dictl;
   cdict_result_t result;
@@ -190,7 +213,7 @@ JNIEXPORT jintArray JNICALL Java_juloo_cdict_Cdict_suffixes_1native
 }
 
 JNIEXPORT jintArray JNICALL Java_juloo_cdict_Cdict_distance_1native
-  (JNIEnv *env, jclass _cls, jlong dictl, jstring jword, jint distance,
+  (JNIEnv *env, jobject _self, jlong dictl, jstring jword, jint distance,
    jint count)
 {
   cdict_t const *dict = (cdict_t const*)dictl;

@@ -28,12 +28,20 @@ public class Cdict
       [name] field, the main dictionary is named "main". The data is copied and
       not modified. Use [cdict-tool] to construct the dictionary. */
   public static Cdict[] of_bytes(byte[] data) throws ConstructionError
-  { return new Header(of_bytes_native(data)).get_dicts(); }
+  {
+    if (data == null)
+      throw new ConstructionError("Dictionary data is null");
+    return new Header(of_bytes_native(data)).get_dicts();
+  }
 
   /** Check whether the given word is recognized by the dictionary. Never
       return null. */
   public Result find(String word)
-  { return find_native(_ptr, word); }
+  {
+    if (word == null)
+      return new Result();
+    return find_native(_ptr, word);
+  }
 
   /** Lookup the frequency of a word. The frequency ranges from 0 to 15
       included and is used to sort words returned by [suffixes] and [distance].
@@ -41,18 +49,33 @@ public class Cdict
       index, either found in [Result.index] or returned by [suffixes] and
       [distance]. */
   public int freq(int index)
-  { return freq_native(_ptr, index); }
+  {
+    if (index < 0)
+      return 0;
+    return freq_native(_ptr, index);
+  }
 
   /** Lookup the word at a given index. [index] is a word index, either found
       in [Result.index] or returned by [suffixes] and [distance]. */
   public String word(int index)
-  { return word_native(_ptr, index); }
+  {
+    if (index < 0)
+      return "";
+    return word_native(_ptr, index);
+  }
+
+  /** Maximum number of results requested in a single call to bound native stack VLAs. */
+  private static final int MAX_RESULTS = 1024;
 
   /** List words that starts with the query passed to [find]. This can be called
       even if [result.found] is false. The returned array cannot contain more than
       [count] elements but might be smaller. */
   public int[] suffixes(Result result, int count)
-  { return suffixes_native(_ptr, result, count); }
+  {
+    if (result == null || count <= 0)
+      return new int[0];
+    return suffixes_native(_ptr, result, Math.min(count, MAX_RESULTS));
+  }
 
   /** [distance dict word ~dist ~count] lists words that are a specified number
       of edits from the given word according to Levenshtein distance.
@@ -61,7 +84,11 @@ public class Cdict
       frequent words are returned. The returned array cannot contain more than
       [count] elements but might be smaller. */
   public int[] distance(String word, int distance, int count)
-  { return distance_native(_ptr, word, distance, count); }
+  {
+    if (word == null || distance < 0 || count <= 0)
+      return new int[0];
+    return distance_native(_ptr, word, distance, Math.min(count, MAX_RESULTS));
+  }
 
   /** Version of the dictionary's format. Dictionaries built for a different
       version are not compatible. */
@@ -106,11 +133,14 @@ public class Cdict
   private static native void init();
   private static native long of_bytes_native(byte[] data);
   private static native void finalize_header(long header);
-  private static native Result find_native(long dict, String word);
-  private static native int freq_native(long dict, int index);
-  private static native String word_native(long dict, int index);
-  private static native int[] suffixes_native(long dict, Result result,
+  // Instance native methods keep `this` (and thus `_header`) strongly reachable
+  // on the JNI call stack across all API levels (21+), preventing premature
+  // Header finalization while C reads `_ptr`.
+  private native Result find_native(long dict, String word);
+  private native int freq_native(long dict, int index);
+  private native String word_native(long dict, int index);
+  private native int[] suffixes_native(long dict, Result result,
       int count);
-  private static native int[] distance_native(long dict, String word,
+  private native int[] distance_native(long dict, String word,
       int distance, int count);
 }

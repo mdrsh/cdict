@@ -45,7 +45,7 @@ JNIEXPORT void JNICALL Java_juloo_cdict_Cdict_finalize_1header
  * Signature: (JLjava/lang/String;)Ljuloo/cdict/Cdict/Result;
  */
 JNIEXPORT jobject JNICALL Java_juloo_cdict_Cdict_find_1native
-  (JNIEnv *, jclass, jlong, jstring);
+  (JNIEnv *, jobject, jlong, jstring);
 
 /*
  * Class:     juloo_cdict_Cdict
@@ -53,7 +53,7 @@ JNIEXPORT jobject JNICALL Java_juloo_cdict_Cdict_find_1native
  * Signature: (JI)I
  */
 JNIEXPORT jint JNICALL Java_juloo_cdict_Cdict_freq_1native
-  (JNIEnv *, jclass, jlong, jint);
+  (JNIEnv *, jobject, jlong, jint);
 
 /*
  * Class:     juloo_cdict_Cdict
@@ -61,7 +61,7 @@ JNIEXPORT jint JNICALL Java_juloo_cdict_Cdict_freq_1native
  * Signature: (JI)Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL Java_juloo_cdict_Cdict_word_1native
-  (JNIEnv *, jclass, jlong, jint);
+  (JNIEnv *, jobject, jlong, jint);
 
 /*
  * Class:     juloo_cdict_Cdict
@@ -69,7 +69,7 @@ JNIEXPORT jstring JNICALL Java_juloo_cdict_Cdict_word_1native
  * Signature: (JLjuloo/cdict/Cdict/Result;I)[I
  */
 JNIEXPORT jintArray JNICALL Java_juloo_cdict_Cdict_suffixes_1native
-  (JNIEnv *, jclass, jlong, jobject, jint);
+  (JNIEnv *, jobject, jlong, jobject, jint);
 
 /*
  * Class:     juloo_cdict_Cdict
@@ -77,7 +77,7 @@ JNIEXPORT jintArray JNICALL Java_juloo_cdict_Cdict_suffixes_1native
  * Signature: (JLjava/lang/String;II)[I
  */
 JNIEXPORT jintArray JNICALL Java_juloo_cdict_Cdict_distance_1native
-  (JNIEnv *, jclass, jlong, jstring, jint, jint);
+  (JNIEnv *, jobject, jlong, jstring, jint, jint);
 
 #ifdef __cplusplus
 }

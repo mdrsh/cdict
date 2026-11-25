@@ -26,11 +26,16 @@ static inline int min(int a, int b) { return (a < b) ? a : b; }
 cdict_cnstr_result_t cdict_of_string(char const *data, int size,
     cdict_header_t *dst)
 {
+  if (data == NULL || size < (int)sizeof(header_t))
+    return CDICT_NOT_A_DICTIONARY;
   header_t const *src_h = (void const*)data;
   if (memcmp(src_h->magic, HEADER_MAGIC, sizeof(src_h->magic)) != 0)
     return CDICT_NOT_A_DICTIONARY;
   if (src_h->version != FORMAT_VERSION)
     return CDICT_UNSUPPORTED_FORMAT;
+  int min_size = (int)sizeof(header_t) + (int)src_h->dict_count * (int)sizeof(dict_header_t);
+  if (size < min_size)
+    return CDICT_NOT_A_DICTIONARY;
   *dst = (cdict_header_t){
     .data = data,
     .n_dicts = src_h->dict_count,
